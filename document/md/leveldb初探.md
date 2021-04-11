@@ -1,6 +1,8 @@
 ### leveldb 数据查找流程
 
-
+| 作者 | 时间 |QQ技术交流群 |
+| ------ | ------ |------ |
+| perrynzhou@gmail.com |2020/12/01 |672152841 |
 
 #### Leveldb基本概念
 
@@ -18,7 +20,7 @@
 #### Get流程
 - 根据应用程序输入的key,构造LookupKey，整个LookupKey包含了三个类型的Key,一个是memtable key用于memtable中查找value;一个是internal key整个是在磁盘上的sstable中查找；最后一个就是应用输入的user key.LookupKey中定义的三种key分别用于客户端输入的key、memtable中查找时候用到的key、sstable中查找时候用的key
 
-  ![lookupkey](F:\Document\leveldb\lookupkey.jpg)
+  ![lookupkey](../images/lookupkey.jpg)
 
 ```
 // A helper class useful for DBImpl::Get()
