@@ -1213,7 +1213,7 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* updates) {
   }
 
   // May temporarily unlock and wait.
-  // 判断当前是数据写入到那里,是否做minor compaction
+  // 初始化wal log文件、memtable、同时判断是否要做compaction
   Status status = MakeRoomForWrite(updates == nullptr);
   // 获取sequence num
   uint64_t last_sequence = versions_->LastSequence();
