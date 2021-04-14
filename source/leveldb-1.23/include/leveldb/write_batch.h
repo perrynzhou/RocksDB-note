@@ -74,10 +74,10 @@ class LEVELDB_EXPORT WriteBatch {
 
  private:
   friend class WriteBatchInternal;
-
+  // 每次writebatch写入的数据存储在这里，批量写入
   std::string rep_;  // See comment in write_batch.cc for the format of rep_
 };
-
+ 
 }  // namespace leveldb
 
 #endif  // STORAGE_LEVELDB_INCLUDE_WRITE_BATCH_H_

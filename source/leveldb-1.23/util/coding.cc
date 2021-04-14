@@ -70,7 +70,9 @@ void PutVarint64(std::string* dst, uint64_t v) {
 }
 
 void PutLengthPrefixedSlice(std::string* dst, const Slice& value) {
+  // 获取value的长度进行编码，使用了5个字节进行编码value的长度,然后把长度append到dst中
   PutVarint32(dst, value.size());
+  // 把value的数据在append到dst的末尾
   dst->append(value.data(), value.size());
 }
 

@@ -1213,12 +1213,17 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* updates) {
   }
 
   // May temporarily unlock and wait.
+  // 判断当前是数据写入到那里,是否做minor compaction
   Status status = MakeRoomForWrite(updates == nullptr);
+  // 获取sequence num
   uint64_t last_sequence = versions_->LastSequence();
   Writer* last_writer = &w;
   if (status.ok() && updates != nullptr) {  // nullptr batch is for compactions
+    // 多个writebatch组织成一个writebatch
     WriteBatch* write_batch = BuildBatchGroup(&last_writer);
+    // 设置当前sequence num,当前writebatch中的前8个字节写入当前sequce num
     WriteBatchInternal::SetSequence(write_batch, last_sequence + 1);
+    // 下一个序列号等于当前序列号+当前writebatch中kv item的个数
     last_sequence += WriteBatchInternal::Count(write_batch);
 
     // Add to log and apply to memtable.  We can release the lock
@@ -1227,14 +1232,17 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* updates) {
     // into mem_.
     {
       mutex_.Unlock();
+      // log_ 定义了wal日志的文件，这时候把当前writebatch中的rep_数据(可能包括多个wal log内容)，写入到当前的wal log文件中
       status = log_->AddRecord(WriteBatchInternal::Contents(write_batch));
       bool sync_error = false;
+      // 根据oiptions中的同步策略来决定是否要刷盘
       if (status.ok() && options.sync) {
         status = logfile_->Sync();
         if (!status.ok()) {
           sync_error = true;
         }
       }
+      // 刷盘后需要把数据插入到memtable中
       if (status.ok()) {
         status = WriteBatchInternal::InsertInto(write_batch, mem_);
       }
@@ -1247,7 +1255,7 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* updates) {
       }
     }
     if (write_batch == tmp_batch_) tmp_batch_->Clear();
-
+    // 更新当前versions的sequence
     versions_->SetLastSequence(last_sequence);
   }
 
@@ -1272,24 +1280,28 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* updates) {
 
 // REQUIRES: Writer list must be non-empty
 // REQUIRES: First writer must have a non-null batch
+// 多个writebatch组织为一个writebatch中，按照writebatch中的顺序，把后端wal log都追加到第一个writebatch中
 WriteBatch* DBImpl::BuildBatchGroup(Writer** last_writer) {
   mutex_.AssertHeld();
   assert(!writers_.empty());
+  // 从writers_获取对首的writer,然后取出这个batch
   Writer* first = writers_.front();
   WriteBatch* result = first->batch;
   assert(result != nullptr);
-
+  // 获取batch此次的写入的大小
   size_t size = WriteBatchInternal::ByteSize(first->batch);
 
   // Allow the group to grow up to a maximum size, but if the
   // original write is small, limit the growth so we do not slow
   // down the small write too much.
+  // 最大是1MB，这个可以在外部初始化，不必每次来计算
   size_t max_size = 1 << 20;
   if (size <= (128 << 10)) {
     max_size = size + (128 << 10);
   }
-
+  
   *last_writer = first;
+  // 从这个队列从第一个元素开始读取
   std::deque<Writer*>::iterator iter = writers_.begin();
   ++iter;  // Advance past "first"
   for (; iter != writers_.end(); ++iter) {
@@ -1311,6 +1323,7 @@ WriteBatch* DBImpl::BuildBatchGroup(Writer** last_writer) {
         // Switch to temporary batch instead of disturbing caller's batch
         result = tmp_batch_;
         assert(WriteBatchInternal::Count(result) == 0);
+        // 这里把src中的wal log的格式追加到dst的wal log中，组织成一个字符串格式,同时设置writebatch中wal log的kv item的个数
         WriteBatchInternal::Append(result, first->batch);
       }
       WriteBatchInternal::Append(result, w->batch);
@@ -1344,6 +1357,8 @@ Status DBImpl::MakeRoomForWrite(bool force) {
       env_->SleepForMicroseconds(1000);
       allow_delay = false;  // Do not delay a single write more than once
       mutex_.Lock();
+
+      // 判断当前memtable中的内存是否小于 size_t write_buffer_size = 4 * 1024 * 1024;
     } else if (!force &&
                (mem_->ApproximateMemoryUsage() <= options_.write_buffer_size)) {
       // There is room in current memtable
@@ -1468,6 +1483,8 @@ void DBImpl::GetApproximateSizes(const Range* range, int n, uint64_t* sizes) {
 // can call if they wish
 Status DB::Put(const WriteOptions& opt, const Slice& key, const Slice& value) {
   WriteBatch batch;
+
+  // 组织wal log的格式为：|seq num|kv item count|key type|key size|key value|value size| value|key size|
   batch.Put(key, value);
   return Write(opt, &batch);
 }
