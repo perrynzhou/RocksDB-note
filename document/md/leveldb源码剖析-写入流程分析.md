@@ -237,3 +237,9 @@ Status WriteBatch::Iterate(Handler* handler) const {
   }
 }
 ```
+
+### 关于Put操作的疑问？
+- 为什么一定要写日志？
+- leveldb主要解决了什么问题？它和redis有啥区别？
+- 写入操作一共经历了几次内存写和磁盘写？
+- 在什么情况下写性能会有一定影响？
