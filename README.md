@@ -13,6 +13,9 @@
 -  [leveldb之Options详解](./document/md/leveldb之Options详解.md)
 -  [常用的数据检索结构](./document/md/常用的数据检索结构.md)
 
+## rocksdb
+-  [rocksdb源码安装](./document/md/rocksdb源码安装.md)
+
 
 ## pmem
 -  [持久化内存数据访问](./document/md/持久化内存数据访问.md)
